@@ -24,9 +24,7 @@ def method_chaining(game_line: str) -> bool:
 def create_initial_dict() -> Dict[str, Any]:
     dict_of_cards = {}
     for index, data_line in enumerate(data):
-        points = method_chaining(
-            data_line
-        )  # Attention : ici il faut oublier le coup des puissances
+        points = method_chaining(data_line)
         card_number = index + 1
         dict_of_cards[card_number] = {}
         dict_of_cards[card_number]["points"] = points
@@ -66,6 +64,4 @@ total_nb_of_instances = compute_sum_of_instances(incremented_dict)
 
 
 print(incremented_dict)
-print(total_nb_of_instances)  # 5483 too low, 980 too low
-
-# il manque les multiplications par le nb de cartes !
+print(total_nb_of_instances)
