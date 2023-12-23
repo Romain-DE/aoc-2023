@@ -38,8 +38,6 @@ print(pairs_of_seed)
 print(sum([len(pair_range) for pair_range in pairs_of_seed]))  # 2 217 452 483
 
 
-
-
 def are_values_in_the_same_row(lower_bound: int, upped_bound: int, map: str) -> bool:
     df_map = pd.DataFrame(
         input_map_dict[map],
@@ -69,6 +67,7 @@ def create_next_column(
         print("to be implemented")
 
     return reversed_df
+
 
 N_MAX = 1000
 vect_df = pd.DataFrame({"location": range(0, N_MAX)})
