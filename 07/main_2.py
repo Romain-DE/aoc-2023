@@ -3,7 +3,6 @@
 # 3. Appliquer le tri et calculer le score
 from collections import Counter
 import pandas as pd
-from functools import cmp_to_key
 
 with open("07/input.txt", "r") as file:
     data = file.read()
