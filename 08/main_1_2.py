@@ -155,7 +155,7 @@ arbre = BinaryTree()
 arbre.insert("AAA", ("FPG", "LTD"))
 
 destination = False
-j = 1
+j = 40
 
 while not destination:
     print("## step", j, "##")
@@ -180,7 +180,7 @@ print(list_of_node_tuples)
 for i, tuple in enumerate(list_of_node_tuples):
     print("### ROUND", i, "###")
     print(tuple[0])
-    j = 50
+    j = 0
     destination = False
     arbre = BinaryTree()
     arbre.insert(parent=tuple[0], children=tuple[1])
@@ -191,7 +191,7 @@ for i, tuple in enumerate(list_of_node_tuples):
         if destination:
             print(destination)
         j += 1
-        if j > 100:
+        if j > 10:
             break
 
 # RMA : 79
