@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-class Parser(object):
+class Parser:
     def __init__(self) -> None:
         self.data = self._read()
         self.instructions = list(self.get_instructions(self.data))

@@ -8,7 +8,7 @@ with open("07/input.txt", "r") as file:
     data = file.read()
 
 
-class Card(object):
+class Card:
     def __init__(self, symbol):
         self.symbol = symbol
         self.card_values = reversed("A, K, Q, T, 9, 8, 7, 6, 5, 4, 3, 2, J".split(", "))
@@ -24,7 +24,7 @@ class Card(object):
         return self.symbol
 
 
-class HandType(object):
+class HandType:
     def __init__(self, value) -> None:
         self.value: str = value
         self.hand_types_dict = {
@@ -47,7 +47,7 @@ class HandType(object):
         return self.value
 
 
-class Hand(object):
+class Hand:
     def __init__(self, value_as_str) -> None:
         self.value_as_str: str = value_as_str
         self.value: list[Card] = list(self.value_as_str)
