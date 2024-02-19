@@ -1,4 +1,3 @@
-import copy
 import re
 
 
@@ -93,16 +92,20 @@ def is_line_regex_valid(completed_line: str, arr: list[int]) -> bool:
 
 def take_line_and_count_good_options(line: str, arr: list[int]) -> int:
     all_line_possibilities = get_list_of_all_possibilities(line)
-    first_filter = [
+    first_filter = (
         possib
         for possib in all_line_possibilities
         if contains_enough_pounds(possib, arr)
-    ]
+    )
     second_filter = [
         possib for possib in first_filter if is_line_regex_valid(possib, arr)
     ]
+    #print(second_filter)
     return len(second_filter)
 
+
+def take_line_and_apply_filter_on_it_and_count(line: str, arr: list[int]) -> int:
+    return len((line for line in fill_qm_in_line(line, ".#") if (contains_enough_pounds(line, arr) & is_line_regex_valid(line, arr))))
 
 output_sum = 0
 for i, line in enumerate(f_data):
@@ -115,7 +118,7 @@ print(output_sum)
 
 for i in f_data_2:
     print(i)
-
+#print(take_line_and_apply_filter_on_it_and_count("????.?????.?????.?????.?????.", [1, 1, 1, 1, 1]))
 
 # output_sum = 0
 # for i, line in enumerate(f_data_2):
@@ -131,5 +134,29 @@ for i in f_data_2:
 # par un . et finit par
 
 # Idées
-# - affuter la méthode de la partie 1 : voir si certaines lignes sont contraintes, etc
+# - affuter la méthode de la partie 1 : 
+#    - voir si certaines lignes sont contraintes, etc
+#   - voir si certaines lignes sont simplifiables : par ex .??..??...?##. 1,1,3 en .??..??... 1,1
+    # -> pas ouf d'après les tests
 # - produire une théorie sur l'assemblage de lignes
+first_line_2 = f_data_2[0]
+print(first_line_2)
+hash_nb = first_line_2[0].count("#")
+print(hash_nb)
+total_hash_nb = sum(first_line_2[1])
+print(total_hash_nb)
+
+def fill_qm_in_line_with_filter(line, possible_chars, arr):
+    remaining_pounds_nb = sum(arr) - line.count("#")
+    for product_elt_it in map(iter, filter(lambda tup: tup.count("#") == remaining_pounds_nb, product(possible_chars, repeat=line.count("?")))):
+        # chaque product_elt_it est un iterator contenant le nb de caractères à remplacer.
+        # La liste des itérators est l'ensemble des combinaisons possibles des caractères à remplacer
+        yield "".join(c if c != "?" else next(product_elt_it) for c in line)
+
+
+def take_filtered_line_and_apply_regex_on_it_and_count(line: str, arr: list[int]) -> int:
+    return len((line for line in fill_qm_in_line_with_filter(line, ".#", arr) if is_line_regex_valid(line, arr)))
+
+
+#print(take_filtered_line_and_apply_regex_on_it_and_count(first_line_2[0], first_line_2[1]))
+
