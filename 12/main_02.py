@@ -1,64 +1,61 @@
-# MAJ 15/02
-# 1. Réussir à implémenter le NFA qui correspond au regex de chaque ligne
-#   a. transformer le format a, b, c en une regex (c'est pas déjà fait ? )
-#   b. transformer le regex en nfa
-#       i. créer les états : 
-#       ii. créer la fct de transition
-# 2. Implémenter le "compteur", càd toutes les façons de parcourir le graphe 
-# qui matchent la str de départ
-#   a. 
-
-
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Optional
+
+import time
 
 # le NFA est-il le goulot d'étranglement ? dans la suite on définit une liste de State, mais on n'utilise que le 1er
-# Faut-il plutot créer une classe NFA ? 
+# Faut-il plutot créer une classe NFA ?
 # Difficulté : si on définit un State, les enfants . et # d'un State doivent être de type Optional[State]. Comment gérer ça ?
 # Forward reference with string # PEP 3107
 
 
+class Parser:
+    def __init__(self, day, filename="input.txt") -> None:
+        self.data = self._read(day, filename)
+        self.f_data = self.format_data()
+        self.f_data_2 = self.format_data_part_2()
+
+    def _read(self, day, filename) -> str:
+        with open(day + "/" + filename, "r") as file:
+            data = file.read()
+        return data
+
+    def format_data(self) -> list[tuple]:
+        list_of_str = self.data.split("\n")
+        list_of_tuples = [
+            (elt.split(" ")[0], [int(char) for char in elt.split(" ")[1].split(",")])
+            for elt in list_of_str
+        ]
+        return list_of_tuples
+
+    def format_data_part_2(self) -> list[tuple]:
+        return [
+            ("?".join([line[0] for i in range(5)]), line[1] * 5) for line in self.f_data
+        ]
+
+
+f_data = Parser(day="12", filename="input.txt").f_data
+f_data_2 = Parser(day="12", filename="input.txt").f_data_2
+
 
 class State:
-    name: str
     d: Optional["State"]
     h: Optional["State"]
     is_final: bool = False
 
     def transition(self, letter: str):
         if letter == ".":
-            #print("char is .")
             return self.d
         elif letter == "#":
-            #print("char is #")
             return self.h
-        else :
+        else:
             return None
-    
-    def check(self, input: str, is_input_full: bool = False) -> bool :
-        current_state = self
-        for char in input:
-            next_state = current_state.transition(char)
-            if next_state == None :
-                return False
-            current_state = next_state
 
-        if is_input_full:
-            return current_state.is_final
-        else :
-            return True
-        
-    def accept(self, input: str) -> bool:
-        return self.check(input, is_input_full=True)
 
-    
-    def __repr__(self) -> str:
-        return self.name
-    
 @dataclass
 class NFA:
     list_of_group_size: list[int]
-    
+
     def __post_init__(self):
         self.states: list[State] = self.generate()
 
@@ -70,96 +67,73 @@ class NFA:
         nb_of_groups = len(self.list_of_group_size)
         nb_of_elts_in_groups = sum(self.list_of_group_size)
         return [State() for i in range(nb_of_groups + nb_of_elts_in_groups)]
-    
+
     def generate(self) -> list[State]:
-        # Générer S + N states
-        # Configurer chaque state avec les règles suivantes :
-            # pour chaque groupe (de taille n+1)
-            # - le 1er state boucle sur lui même avec le ., et va au suivant avec le #
-            # - le 2e (si non dernier) ne mène qu'au suivant avec le #
-            # - ...
-            # - le n+1ième (si pas dernier groupe) mène au groupe suivant par un .
-            # - si dernier groupe, le n+1-ième boucle sur lui même par un . et est final
+        # 1. Générer S + N states
+        # 2. Configurer chaque state avec les règles suivantes :
+        # pour chaque groupe (de taille n+1)
+        # - le 1er state boucle sur lui même avec le ., et va au suivant avec le #
+        # - le 2e (si non dernier) ne mène qu'au suivant avec le #
+        # - ...
+        # - le n+1ième (si pas dernier groupe) mène au groupe suivant par un .
+        # - si dernier groupe, le n+1-ième boucle sur lui même par un . et est final
 
         states = self.generate_empty_states()
         count = 0
         for j, nb in enumerate(self.list_of_group_size):
             for i in range(nb + 1):
-                #print("will now treat elt", count)
+                # print("will now treat elt", count)
                 curr_state = states[count]
                 next_state = states[count + 1] if count != len(states) - 1 else None
-                if i == 0: # 1er elt d'un groupe
+                if i == 0:  # 1er elt d'un groupe
                     curr_state.d = curr_state
                     curr_state.h = next_state
-                elif i == nb: # dernier elt d'un groupe
-                    if j == len(self.list_of_group_size) - 1: # cas du dernier groupe
+                elif i == nb:  # dernier elt d'un groupe
+                    if j == len(self.list_of_group_size) - 1:  # cas du dernier groupe
                         curr_state.d = curr_state
                         curr_state.h = None
                         curr_state.is_final = True
-                    else :
+                    else:
                         curr_state.d = next_state
                         curr_state.h = None
-                else : 
+                else:
                     curr_state.d = None
                     curr_state.h = next_state
 
                 count += 1
-        
+
         return states
 
-nfa = NFA(list_of_group_size=[3, 2, 1])
-states = nfa.generate()
-q0 = states[0]
-print("==TEST==")
-for input in [".###.##.#...", ".###.##..#..", ".###.##....#", ".###.##...."]:
-    print(q0.accept(input))
-print("==TEST==")
-    
-def generate_states(arr: list[int]) -> list[State]:
-    size_of_arr = len(arr)
-    sum_in_arr = sum(arr)
-    list_of_states = [State() for i in range(size_of_arr + sum_in_arr)]
-    for i, state in enumerate(list_of_states):
-        state.name = str(i)
-    
-    return list_of_states
+    def check_str_beginning(self, input: str, is_input_full: bool = False) -> bool:
+        current_state = self.states[0]
+        for char in input:
+            next_state = current_state.transition(char)
+            if next_state == None:
+                return False
+            current_state = next_state
 
-def generate_nfa(arr: list[int]) -> list[State]:
-    states = generate_states(arr)
-    count = 0
-    for j, nb in enumerate(arr):
-        for i in range(nb + 1):
-            #print("will now treat elt", count)
-            curr_state = states[count]
-            next_state = states[count + 1] if count != len(states) - 1 else None
-            if i == 0: # 1er elt d'un groupe
-                curr_state.d = curr_state
-                curr_state.h = next_state
-            elif i == nb: # dernier elt d'un groupe
-                if j == len(arr) - 1: # cas du dernier groupe
-                    curr_state.d = curr_state
-                    curr_state.h = None
-                    curr_state.is_final = True
-                else :
-                    curr_state.d = next_state
-                    curr_state.h = None
-            else : 
-                curr_state.d = None
-                curr_state.h = next_state
+        if is_input_full:
+            return current_state.is_final
+        else:
+            return True
 
-            count += 1
-    
-    return states
+    def accept(self, input: str) -> bool:
+        return self.check_str_beginning(input, is_input_full=True)
 
-# q0 = generate_nfa([2])[0]
+
+# nfa = NFA([3, 2, 1])
+# for input in [".###.##.#...", ".###.##..#..", ".###.##....#", ".###.##...."]:
+#     print(nfa.accept(input))
+
+
+# nfa = NFA([2])
 # for input in [".##.", "#...", "..#", "#..#"]:
-#     print(q0.accept(input))
+#     print(nfa.accept(input))
 
 
-# q0 = generate_nfa([1, 3, 1, 6])[0]
+# nfa = NFA([1, 3, 1, 6])
 # for input in [".#.###.#.######"]:
-#     print(q0.accept(input))
-
+#     print(nfa.accept(input))
 
 
 def flatten_with_care(list_of_list) -> list:
@@ -169,32 +143,30 @@ def flatten_with_care(list_of_list) -> list:
             new_list = new_list + flatten_with_care(elt)
         else:
             new_list.append(elt)
-    
+
     return new_list
 
 
 def recursive_log(turn: int, *message) -> None:
-    pass #print((turn)*"==", *message)
+    print((turn)*"==", *message)
 
 
 # Idée : améliorer la méthode .accept()
-    # elle doit pouvoir gérer le "?"
-    # dans ce cas, elle crée une liste [curr_state.transition(d), curr_state.transition(h)]
-    # peut-être qu'il faudra changer aussi la méthode .transition(), pour qu'elle accepte un paramètre "remaining chars"
+# - elle doit pouvoir gérer le "?"
+#   dans ce cas, elle crée une liste [curr_state.transition(d), curr_state.transition(h)]
+# - peut-être qu'il faudra changer aussi la méthode .transition(), pour qu'elle accepte un paramètre "remaining chars"
 
-def list_possible_arr(first_part: str, curr_char: str, last_part: str, init_state: State, arr: list[int]) -> int :
+def list_possible_arr(first_part: str, curr_char: str, last_part: str, nfa: NFA) -> int:
     turn = len(first_part)
     total_str = first_part + curr_char + last_part
     qm_nb = total_str.count("?")
     hash_nb = total_str.count("#")
-    sum_of_expected_h = sum(arr)
-    
+    sum_of_expected_h = sum(nfa.list_of_group_size)
 
     recursive_log(turn, "start of fct. Called with", first_part, curr_char, last_part)
 
-    ####
-    # ADD CHECK HERE #
-    # return False if : 
+    # Fail-fast Check
+    # return False if :
     # 1. il n'y a plus de ?, et le nb de qm est != de la somme
     # 2. même si tous les qm etaient des #, il n'y en a pas assez pour atteindre la somme
     # 3. il reste des QM mais que le nb est atteint
@@ -203,84 +175,142 @@ def list_possible_arr(first_part: str, curr_char: str, last_part: str, init_stat
         if hash_nb != sum_of_expected_h:
             recursive_log(turn, "Fail fast. total hash nb does not match")
             return False
-    else :
+    else:
         if hash_nb + qm_nb < sum_of_expected_h:
             recursive_log(turn, "Fail fast. not enough hash")
             return False
         elif hash_nb > sum_of_expected_h:
             return False
+        
 
 
     if curr_char == "?":
-        recursive_log(turn, "\t", "Char is ? Will create list. 1st elt is ", first_part, ".", last_part, "2d is",  first_part, "#", last_part)
+        recursive_log(
+            turn,
+            "Char is ? Will create list. 1st elt is ",
+            first_part,
+            ".",
+            last_part,
+            "2d is",
+            first_part,
+            "#",
+            last_part,
+        )
         results = [
-            list_possible_arr(first_part, ".", last_part, init_state, arr), 
-            list_possible_arr(first_part, "#", last_part, init_state, arr)]
-        recursive_log(turn, "\t", "Created list :  1st elt is ", first_part, ".", last_part, "2d is",  first_part, "#", last_part, "and the result is", results)
-    elif curr_char in[".", "#"]:
+            list_possible_arr(first_part, ".", last_part, nfa),
+            list_possible_arr(first_part, "#", last_part, nfa), # Idée : à n'ajouter que si le nb total de # n'est pas déjà atteint
+        ]
+        recursive_log(
+            turn,
+            "Created list: 1st elt is ",
+            first_part,
+            ".",
+            last_part,
+            "2d is",
+            first_part,
+            "#",
+            last_part,
+            "result:",
+            results,
+        )
+    elif curr_char in [".", "#"]:
         is_input_full = last_part == ""
-        if is_input_full: # fin de parcours
-            results = init_state.accept(first_part + curr_char)
-            recursive_log(turn, "\t", "Fin de parcours.", "Les args sont", first_part + curr_char, "et le rslt", results)
+        if is_input_full:  # fin de parcours
+            results = nfa.accept(first_part + curr_char)
+            recursive_log(
+                turn,
+                "Fin de parcours.",
+                "args:",
+                first_part + curr_char,
+                "result:",
+                results,
+            )
             return results
-                
 
-        else : # la recursion n'est pas finie
+        else:  # la recursion n'est pas finie
             if "?" not in last_part:
-                results = init_state.accept(first_part + curr_char + last_part)
-                recursive_log(turn, "\t", "no QM left in str. Will check it entirely. Is it correct :", results)
+                results = nfa.accept(first_part + curr_char + last_part)
+                recursive_log(
+                    turn,
+                    "no QM left in str. Is entire str correct :",
+                    results,
+                )
                 return results
-
-            recursive_log(turn,"\t", "On going recursion. The input is the following :", first_part + curr_char)
-            if is_first_part_correct := init_state.check(first_part + curr_char, is_input_full):
-                recursive_log(turn, "\t", "first part of input correct", "Will continue and call with args ", first_part + curr_char, last_part[0], last_part[1:])
-                return list_possible_arr(first_part + curr_char, last_part[0], last_part[1:], init_state, arr)
-            else : 
-                recursive_log(turn, "\t", "first part of input incorrect. Will return False")
-                return False
             
-    elif curr_char == "" :
-        if last_part != "":
-            recursive_log(turn, "\t", "empty current part. Will restart")
-            return list_possible_arr(first_part, last_part[0], last_part[1:], init_state, arr)
+            else :
+                recursive_log(
+                        turn,
+                        "On going recursion. The input is :",
+                        first_part + curr_char,
+                    )
+                
+                if nfa.check_str_beginning(first_part):
+                    return list_possible_arr(
+                        first_part + curr_char, last_part[0], last_part[1:], nfa
+                    )
+                
+                else : 
+                    recursive_log(turn, "First part of input incorrect")
+                    return False
 
-        else :
-            recursive_log(turn, "\t", "empty curr char, and empty last part. Will exit")
+
+    elif curr_char == "":
+        if last_part != "":
+            recursive_log(turn, "empty current part. Will restart")
+            return list_possible_arr(first_part, last_part[0], last_part[1:], nfa)
+
+        else:
+            recursive_log(turn, "empty curr char, and empty last part. Will exit")
             return None
-        
-    recursive_log(turn, "End of fct. Called with", first_part, curr_char, last_part, "Will print result", results)
+
+    recursive_log(
+        turn,
+        "End of fct. Called with",
+        first_part,
+        curr_char,
+        last_part,
+        "Will print result",
+        results,
+    )
     return flatten_with_care(results)
 
-# Ameliorer : 
-# - si le nb de # restant est inférieur à la somme des nb dans l'arr, return False
-# - si le nb de # et ? ..., idem
-# - arrêter s'il reste des QM mais que le nb est atteint
+
 def take_input_and_return_count(input: str, arr: list[int]) -> int:
-    return list_possible_arr("", "", input, init_state=generate_nfa(arr)[0], arr=arr).count(True)
+    return list_possible_arr("", "", input, nfa=NFA(arr)).count(True)
 
-import time
 
-print(take_input_and_return_count("????.######..#####.", [1,6,5]))
+print(take_input_and_return_count("????.######..#####.", [1, 6, 5]))
 
-# intégrer la fct à la classe
-input_2500 = "????.######..#####.?????.######..#####.?????.######..#####.?????.######..#####.?????.######..#####."
-arr_2500 = [1, 6, 5, 1, 6, 5, 1, 6, 5, 1, 6, 5, 1, 6, 5]
-start_time = time.perf_counter_ns()
-print(take_input_and_return_count(input_2500, arr_2500))
-end_time = time.perf_counter_ns()
-print((end_time-start_time)/1e9)
+# # intégrer la fct à la classe
+# input_2500 = "????.######..#####.?????.######..#####.?????.######..#####.?????.######..#####.?????.######..#####."
+# arr_2500 = [1, 6, 5, 1, 6, 5, 1, 6, 5, 1, 6, 5, 1, 6, 5]
+# start_time = time.perf_counter_ns()
+# # print(take_input_and_return_count(input_2500, arr_2500))
+# print(list_possible_arr("", "", input_2500, nfa=NFA(arr_2500)))
+# end_time = time.perf_counter_ns()
+# print((end_time - start_time) / 1e9)
 
 # input_hard = "?###??????????###??????????###??????????###??????????###????????"
 # arr_hard = [3, 2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1]
 # start_time = time.perf_counter_ns()
-# print(take_input_and_return_count(input_hard, arr_hard))
+# # print(take_input_and_return_count(input_hard, arr_hard))
+# print(list_possible_arr("", "", input_hard, nfa=NFA(arr_hard)))  # 33sec
 # end_time = time.perf_counter_ns()
-# print((end_time-start_time)/10e9)
+# print((end_time - start_time) / 1e9)
 
 
-# from main import f_data_2
-# for input, arr in f_data_2:
-#     print(input)
-#     print(arr)
-#     print(take_input_and_return_count(input, arr))
-#     print("===")
+count = 0
+i =0
+#for input, arr in f_data_2:
+    # print(input)
+    # print(arr)
+    # start_time = time.perf_counter_ns()
+    # i+=1
+    # print(i)
+    # count += take_input_and_return_count(input, arr)
+    # end_time = time.perf_counter_ns()
+    # print((end_time - start_time) / 1e9)
+    # print("===")
+
+#print(count)
+# TODO : rajouter le check du début de str dans le fail fast ?
