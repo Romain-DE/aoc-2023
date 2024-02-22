@@ -14,3 +14,39 @@ https://grrinchas.github.io/posts/nfa
 
 * - understanding => https://www.cs.odu.edu/~zeil/cs390/latest/Public/nfa-jflap/index.html
 * - implementing => https://grrinchas.github.io/posts/nfa
+
+
+Idée : 
+plutôt que d'avancer caractère par caractère, on peut avancer jusqu'au point d'interrogation suivant
+
+MAJ 20/02
+bloqué. Pourquoi la nouvelle implem est plus lente que la précedénte ? 
+
+Pistes
+- explorer la question du cache
+    - c'est quoi le cache ici ? voir le cas fibonacci par ex
+    - comment implémnter ça avec le décorateur ? 
+
+- "recursion with cache" : qu'est-ce qui pourrait se stocker dans le cache ? 
+- la méthode des NFA permet de vérifier rapidement une string. 
+    - Est-ce que c'est vraiment mieux que le regex initial ? 
+    - Comparer
+    Intuition : le problème semble se trouver dans la façon dont on parcourt l'input
+    Plutôt que de  des règles, essayer d'en enlever. Cela passe sans doute par des .check()
+    le plus tôt possible.
+    Peut-être implémenter une méthode check générique qui accepte une str entière, et qui fait elle même
+    le découpage jusqu'au '?' ? Elle pourrait aussi faire quelques checks de fail-fast ? 
+    Cela impliquerait l'algo suivant : 
+        if qm_count > 0 :
+            if check_v2 :
+                qm_index, first_part, last_part
+                [list_possible_arr_2(first_part + "." + last_part),
+                list_possible_arr_2(first_part + "#" + last_part),
+                ]
+            else : 
+                return False
+        else : 
+            results = nfa.accept(input_with_qm_replaced)
+            return results
+
+- Bonus : logging : https://ankitbko.github.io/blog/2021/04/logging-in-python/

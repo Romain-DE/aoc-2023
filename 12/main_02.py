@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from functools import cache, cached_property, lru_cache
 from typing import Optional
 
 import time
@@ -60,7 +61,7 @@ class NFA:
         self.states: list[State] = self.generate()
 
     def generate_empty_states(self) -> list[State]:
-        # Quel sera le nb de States étant donné un arr. ?
+        # Quel sera le nb de States étant donné une liste de groupes ?
         # soit N le nb de groupes
         # soit S le nb total de #
         # Alors le nb de states sera S + N
@@ -75,8 +76,9 @@ class NFA:
         # - le 1er state boucle sur lui même avec le ., et va au suivant avec le #
         # - le 2e (si non dernier) ne mène qu'au suivant avec le #
         # - ...
-        # - le n+1ième (si pas dernier groupe) mène au groupe suivant par un .
-        # - si dernier groupe, le n+1-ième boucle sur lui même par un . et est final
+        # - le n+1ième
+        #   - si pas dernier groupe :  mène au groupe suivant par un .
+        #   - sinon : boucle sur lui même par un . et est final
 
         states = self.generate_empty_states()
         count = 0
@@ -117,6 +119,24 @@ class NFA:
         else:
             return True
 
+    def check_v2(self, input: str) -> bool:
+
+        if (qm_count := input.count("?")) > 0:
+            hash_nb = input.count("#")
+            sum_of_expected_hash = sum(self.list_of_group_size)
+
+            if hash_nb + qm_count < sum_of_expected_hash:
+                return False
+
+            qm_index = input.index("?")
+            first_part = input[:qm_index]
+            return self.check_str_beginning(first_part)
+        
+        else:
+            return self.accept(input)
+
+
+
     def accept(self, input: str) -> bool:
         return self.check_str_beginning(input, is_input_full=True)
 
@@ -138,6 +158,7 @@ class NFA:
 
 def flatten_with_care(list_of_list) -> list:
     new_list = []
+
     for elt in list_of_list:
         if isinstance(elt, list):
             new_list = new_list + flatten_with_care(elt)
@@ -148,7 +169,8 @@ def flatten_with_care(list_of_list) -> list:
 
 
 def recursive_log(turn: int, *message) -> None:
-    print((turn)*"==", *message)
+    #print((turn) * "==", *message)
+    pass
 
 
 # Idée : améliorer la méthode .accept()
@@ -156,130 +178,199 @@ def recursive_log(turn: int, *message) -> None:
 #   dans ce cas, elle crée une liste [curr_state.transition(d), curr_state.transition(h)]
 # - peut-être qu'il faudra changer aussi la méthode .transition(), pour qu'elle accepte un paramètre "remaining chars"
 
-def list_possible_arr(first_part: str, curr_char: str, last_part: str, nfa: NFA) -> int:
-    turn = len(first_part)
-    total_str = first_part + curr_char + last_part
-    qm_nb = total_str.count("?")
-    hash_nb = total_str.count("#")
-    sum_of_expected_h = sum(nfa.list_of_group_size)
 
-    recursive_log(turn, "start of fct. Called with", first_part, curr_char, last_part)
+# def list_possible_arr(first_part: str, curr_char: str, last_part: str, nfa: NFA) -> int:
+#     turn = len(first_part)
+#     total_str = first_part + curr_char + last_part
+#     qm_nb = total_str.count("?")
+#     hash_nb = total_str.count("#")
+#     sum_of_expected_hash = sum(nfa.list_of_group_size)
 
-    # Fail-fast Check
-    # return False if :
-    # 1. il n'y a plus de ?, et le nb de qm est != de la somme
-    # 2. même si tous les qm etaient des #, il n'y en a pas assez pour atteindre la somme
-    # 3. il reste des QM mais que le nb est atteint
+#     recursive_log(turn, "Start of fct. Args :", first_part, curr_char, last_part)
 
-    if qm_nb == 0:
-        if hash_nb != sum_of_expected_h:
-            recursive_log(turn, "Fail fast. total hash nb does not match")
-            return False
-    else:
-        if hash_nb + qm_nb < sum_of_expected_h:
-            recursive_log(turn, "Fail fast. not enough hash")
-            return False
-        elif hash_nb > sum_of_expected_h:
+#     # Fail-fast Check
+#     # return False if :
+#     # 1. il n'y a plus de ?, et le nb de # est != de la somme
+#     # 2. même si tous les qm etaient des #, il n'y en a pas assez pour atteindre la somme
+#     # 3. il reste des QM mais que le nb est atteint
+
+#     if qm_nb == 0:
+#         if hash_nb != sum_of_expected_hash:
+#             recursive_log(turn, "**Fail fast** total hash nb does not match")
+#             return False
+#     else:
+#         if hash_nb + qm_nb < sum_of_expected_hash:
+#             recursive_log(turn, "**Fail fast** not enough hash")
+#             return False
+#         elif hash_nb > sum_of_expected_hash:
+#             recursive_log(turn, "**Fail fast** too many hash")
+#             return False
+
+#     if curr_char == "?":
+#         # if not nfa.check_str_beginning(first_part):
+#         #     return False
+
+#         if (first_part + last_part).count("#") == sum_of_expected_hash:
+#             recursive_log(
+#                 turn, "Char is ?. Enough #. Will call :", first_part, ".", last_part
+#             )
+#             results = [list_possible_arr(first_part, ".", last_part, nfa)]
+#         else:
+#             recursive_log(turn, "Char is ?. Will call ", first_part, "[.|#]", last_part)
+#             results = [
+#                 list_possible_arr(first_part, ".", last_part, nfa),
+#                 list_possible_arr(first_part, "#", last_part, nfa),
+#             ]
+
+#         recursive_log(turn, "results from '?' :", results)
+
+#     elif curr_char in [".", "#"]:
+#         is_input_full = last_part == ""
+#         if is_input_full:  # fin de parcours
+#             results = nfa.accept(first_part + curr_char)
+#             recursive_log(
+#                 turn,
+#                 "End. Args:",
+#                 first_part,
+#                 curr_char,
+#                 "result:",
+#                 results,
+#             )
+#             return results
+
+#         else:  # la recursion n'est pas finie
+#             if "?" not in last_part:
+#                 results = nfa.accept(total_str)
+#                 recursive_log(
+#                     turn,
+#                     "no QM left. Is entire str correct :",
+#                     results,
+#                 )
+#                 return results
+
+#             else:
+#                 recursive_log(
+#                     turn,
+#                     "On going recursion. Input is :",
+#                     first_part,
+#                     curr_char,
+#                     last_part,
+#                 )
+
+#                 if nfa.check_str_beginning(first_part + curr_char):
+#                     return list_possible_arr(
+#                         first_part + curr_char, last_part[0], last_part[1:], nfa
+#                     )
+
+#                 else:
+#                     recursive_log(turn, "First part incorrect")
+#                     return False
+
+#     elif curr_char == "":
+#         if last_part != "":
+#             recursive_log(turn, "empty current part. Will restart")
+#             return list_possible_arr(first_part, last_part[0], last_part[1:], nfa)
+
+#         else:
+#             recursive_log(turn, "empty curr char, and empty last part. Will exit")
+#             return None
+
+#     recursive_log(
+#         turn,
+#         "End of fct. Called with",
+#         first_part,
+#         curr_char,
+#         last_part,
+#         "Result : ",
+#         results,
+#     )
+#     return flatten_with_care(results)
+
+nfa = NFA([3, 2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1])
+
+
+def list_possible_arr_2(input: str, nfa: NFA) -> int:
+    hash_nb = input.count("#")
+    sum_of_expected_hash = sum(nfa.list_of_group_size)
+
+    if (qm_count := input.count("?")) > 0:
+        qm_index = input.index("?")
+        first_part, last_part = input[:qm_index], input[qm_index + 1 :]
+        turn = len(first_part)
+        recursive_log(turn, "Start of fct. QM remaining. Args :", input)
+
+        if not nfa.check_str_beginning(first_part):
+            recursive_log(
+                turn, "first part wrong", input
+            )
             return False
         
-
-
-    if curr_char == "?":
-        recursive_log(
-            turn,
-            "Char is ? Will create list. 1st elt is ",
-            first_part,
-            ".",
-            last_part,
-            "2d is",
-            first_part,
-            "#",
-            last_part,
-        )
-        results = [
-            list_possible_arr(first_part, ".", last_part, nfa),
-            list_possible_arr(first_part, "#", last_part, nfa), # Idée : à n'ajouter que si le nb total de # n'est pas déjà atteint
-        ]
-        recursive_log(
-            turn,
-            "Created list: 1st elt is ",
-            first_part,
-            ".",
-            last_part,
-            "2d is",
-            first_part,
-            "#",
-            last_part,
-            "result:",
-            results,
-        )
-    elif curr_char in [".", "#"]:
-        is_input_full = last_part == ""
-        if is_input_full:  # fin de parcours
-            results = nfa.accept(first_part + curr_char)
+        if hash_nb + qm_count < sum_of_expected_hash:
             recursive_log(
-                turn,
-                "Fin de parcours.",
-                "args:",
-                first_part + curr_char,
-                "result:",
-                results,
+                turn, "# nb :", hash_nb, "? nb :", qm_count, "expected sum", sum_of_expected_hash, "will be lacking # in : ", input
             )
-            return results
-
-        else:  # la recursion n'est pas finie
-            if "?" not in last_part:
-                results = nfa.accept(first_part + curr_char + last_part)
-                recursive_log(
-                    turn,
-                    "no QM left in str. Is entire str correct :",
-                    results,
-                )
-                return results
+            return False
+        
+        if hash_nb < sum_of_expected_hash:
             
-            else :
-                recursive_log(
-                        turn,
-                        "On going recursion. The input is :",
-                        first_part + curr_char,
-                    )
-                
-                if nfa.check_str_beginning(first_part):
-                    return list_possible_arr(
-                        first_part + curr_char, last_part[0], last_part[1:], nfa
-                    )
-                
-                else : 
-                    recursive_log(turn, "First part of input incorrect")
-                    return False
-
-
-    elif curr_char == "":
-        if last_part != "":
-            recursive_log(turn, "empty current part. Will restart")
-            return list_possible_arr(first_part, last_part[0], last_part[1:], nfa)
-
+            recursive_log(
+                turn, "nb of # not reached. Trying :", first_part, "[.|#]", last_part
+            )
+            results = []
+            add_part = ""
+            if last_part.count("?") > 0:
+                next_qm_index = last_part.index("?")
+                add_part = last_part[:next_qm_index]
+            if nfa.check_str_beginning(first_part + "." + add_part): # Ici check jusqu'au prochain QM
+                # Ajouter un check : 
+                results.append(list_possible_arr_2(first_part + "." + last_part, nfa))
+            if nfa.check_str_beginning(first_part + "#" + add_part): # Ici check jusqu'au prochain QM
+                results.append(list_possible_arr_2(first_part + "#" + last_part, nfa))
+            if results == []:
+                return False
+            # results = [
+            #     list_possible_arr_2(first_part + "." + last_part, nfa),
+            #     list_possible_arr_2(first_part + "#" + last_part, nfa),
+            # ]
         else:
-            recursive_log(turn, "empty curr char, and empty last part. Will exit")
-            return None
+            input_with_qm_replaced = input.replace("?", ".")
+            recursive_log(turn, "nb of # reached. Trying :", input_with_qm_replaced)
+            results = nfa.accept(input_with_qm_replaced)
+            return results
+    else:
+        turn = len(input)
+        recursive_log(turn, "Start of fct. Args :", input)
+        results = nfa.accept(input)
+        recursive_log(turn, "No QM left. Str to check :", input, "Result", results)
+        return results
 
     recursive_log(
         turn,
         "End of fct. Called with",
-        first_part,
-        curr_char,
-        last_part,
-        "Will print result",
+        input,
+        "Result : ",
         results,
     )
+
     return flatten_with_care(results)
 
 
 def take_input_and_return_count(input: str, arr: list[int]) -> int:
-    return list_possible_arr("", "", input, nfa=NFA(arr)).count(True)
+    nfa = NFA(arr)
+    return list_possible_arr_2(input, nfa).count(True)
 
 
-print(take_input_and_return_count("????.######..#####.", [1, 6, 5]))
+#print(take_input_and_return_count("????.######..#####.", [1, 6, 5]))
+
+# Test en 5sec avec N=4, 107s avec N=5
+# line = ("???##????????#??", [7, 4])
+# N = 5
+# rep_line = ("?".join([line[0] for i in range(N)]), line[1] * N)
+# start_time = time.perf_counter_ns()
+# print(take_input_and_return_count(rep_line[0], rep_line[1]))
+# end_time = time.perf_counter_ns()
+# print((end_time - start_time) / 1e9)
+
 
 # # intégrer la fct à la classe
 # input_2500 = "????.######..#####.?????.######..#####.?????.######..#####.?????.######..#####.?????.######..#####."
@@ -290,27 +381,27 @@ print(take_input_and_return_count("????.######..#####.", [1, 6, 5]))
 # end_time = time.perf_counter_ns()
 # print((end_time - start_time) / 1e9)
 
-# input_hard = "?###??????????###??????????###??????????###??????????###????????"
-# arr_hard = [3, 2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1]
-# start_time = time.perf_counter_ns()
-# # print(take_input_and_return_count(input_hard, arr_hard))
-# print(list_possible_arr("", "", input_hard, nfa=NFA(arr_hard)))  # 33sec
-# end_time = time.perf_counter_ns()
-# print((end_time - start_time) / 1e9)
+input_hard = "?###??????????###??????????###??????????###??????????###????????"
+arr_hard = [3, 2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1, 3, 2, 1]
+start_time = time.perf_counter_ns()
+# print(take_input_and_return_count(input_hard, arr_hard))
+list_possible_arr_2(input_hard, nfa=NFA(arr_hard))  # 33sec, puis 27, puis 24
+end_time = time.perf_counter_ns()
+print((end_time - start_time) / 1e9)
 
 
-count = 0
-i =0
-#for input, arr in f_data_2:
-    # print(input)
-    # print(arr)
-    # start_time = time.perf_counter_ns()
-    # i+=1
-    # print(i)
-    # count += take_input_and_return_count(input, arr)
-    # end_time = time.perf_counter_ns()
-    # print((end_time - start_time) / 1e9)
-    # print("===")
+# count = 0
+# i = 0
+# for input, arr in f_data_2:
+#     print(input)
+#     print(arr)
+#     start_time = time.perf_counter_ns()
+#     i += 1
+#     print(i)
+#     count += take_input_and_return_count(input, arr)
+#     end_time = time.perf_counter_ns()
+#     print((end_time - start_time) / 1e9)
+#     print("===")
 
-#print(count)
+# print(count)
 # TODO : rajouter le check du début de str dans le fail fast ?
